@@ -12,14 +12,18 @@ const PRODUCTS = {
   jumbo30: [/30\s*Yr\.?\s*Jumbo/i, /30[-\s]*Year\s*Jumbo/i, /Jumbo\s*30/i],
 };
 
-export function parseRates(html) {
+export function toText(html) {
   // Strip scripts, styles and tags so labels and numbers sit next to each other as plain text.
-  const text = html
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ');
+}
+
+export function parseRates(html) {
+  const text = toText(html);
   const rates = {};
   for (const [key, patterns] of Object.entries(PRODUCTS)) {
     for (const re of patterns) {
@@ -38,7 +42,8 @@ export function parseRates(html) {
   return { rates, date: d ? d[1] : null };
 }
 
-export default async () => {
+export default async (req) => {
+  const debug = req && req.url && new URL(req.url).searchParams.has('debug');
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -49,7 +54,21 @@ export default async () => {
   try {
     const res = await fetch(SOURCE, { headers: { 'User-Agent': 'Mozilla/5.0 (TeamJonesCalculator)', 'Accept': 'text/html' } });
     if (!res.ok) throw new Error('MND returned ' + res.status);
-    const { rates, date } = parseRates(await res.text());
+    const html = await res.text();
+    if (debug) {
+      // Diagnostic view: shows the text around each rate label so the reader can be tuned.
+      const text = toText(html);
+      const around = {};
+      for (const [key, patterns] of Object.entries(PRODUCTS)) {
+        around[key] = [];
+        for (const re of patterns) {
+          const g = new RegExp(re.source, 'gi'); let m;
+          while ((m = g.exec(text)) && around[key].length < 4) around[key].push(text.slice(Math.max(0, m.index - 60), m.index + 220));
+        }
+      }
+      return new Response(JSON.stringify({ parsed: parseRates(html), around }, null, 2), { headers: { ...headers, 'Netlify-CDN-Cache-Control': 'no-store', 'Cache-Control': 'no-store' } });
+    }
+    const { rates, date } = parseRates(html);
     if (!Object.keys(rates).length) throw new Error('No rates found on the MND page');
     return new Response(JSON.stringify({ source: SOURCE, date: date || new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }), rates }), { headers });
   } catch (err) {
