@@ -3,13 +3,16 @@
 
 const SOURCE = 'https://www.mortgagenewsdaily.com/mortgage-rates/mnd';
 
-// Product labels as they appear on the MND index page (a few spellings each, in case the page changes slightly).
+// Each product's row in the MND rate table reads like "30 Yr. FHA 6.98%": the exact label, then today's rate.
+// Matching is case-sensitive so the site menu ("30 YR FHA") is ignored. The 30- and 15-year fixed
+// also fall back to the ticker at the top of the page ("30YR Fixed Rate 7.33%").
+const NUM = '(\\d{1,2}\\.\\d{2,3})\\s*%';
 const PRODUCTS = {
-  conv30:  [/30\s*Yr\.?\s*Fixed/i, /30[-\s]*Year\s*Fixed/i],
-  conv15:  [/15\s*Yr\.?\s*Fixed/i, /15[-\s]*Year\s*Fixed/i],
-  fha30:   [/30\s*Yr\.?\s*FHA/i, /30[-\s]*Year\s*FHA/i, /FHA\s*30/i],
-  va30:    [/30\s*Yr\.?\s*VA/i, /30[-\s]*Year\s*VA/i, /VA\s*30/i],
-  jumbo30: [/30\s*Yr\.?\s*Jumbo/i, /30[-\s]*Year\s*Jumbo/i, /Jumbo\s*30/i],
+  conv30:  [new RegExp('30 Yr\\. Fixed\\s+' + NUM), new RegExp('30YR Fixed Rate\\s+' + NUM)],
+  conv15:  [new RegExp('15 Yr\\. Fixed\\s+' + NUM), new RegExp('15YR Fixed Rate\\s+' + NUM)],
+  fha30:   [new RegExp('30 Yr\\. FHA\\s+' + NUM)],
+  va30:    [new RegExp('30 Yr\\. VA\\s+' + NUM)],
+  jumbo30: [new RegExp('30 Yr\\. Jumbo\\s+' + NUM)],
 };
 
 export function toText(html) {
@@ -28,17 +31,13 @@ export function parseRates(html) {
   for (const [key, patterns] of Object.entries(PRODUCTS)) {
     for (const re of patterns) {
       const m = re.exec(text);
-      if (!m) continue;
-      // First percentage within ~120 characters after the label is that product's index rate.
-      const after = text.slice(m.index + m[0].length, m.index + m[0].length + 120);
-      const r = /(\d{1,2}\.\d{2,3})\s*%/.exec(after);
-      if (r) {
-        const v = parseFloat(r[1]);
+      if (m) {
+        const v = parseFloat(m[1]);
         if (v > 1 && v < 20) { rates[key] = v; break; }
       }
     }
   }
-  const d = /(?:as of|updated)\s*:?\s*([A-Z][a-z]{2,9}\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i.exec(text);
+  const d = /Last Updated:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i.exec(text);
   return { rates, date: d ? d[1] : null };
 }
 
@@ -62,7 +61,7 @@ export default async (req) => {
       for (const [key, patterns] of Object.entries(PRODUCTS)) {
         around[key] = [];
         for (const re of patterns) {
-          const g = new RegExp(re.source, 'gi'); let m;
+          const g = new RegExp(re.source.split('\\s+')[0], 'g'); let m;
           while ((m = g.exec(text)) && around[key].length < 4) around[key].push(text.slice(Math.max(0, m.index - 60), m.index + 220));
         }
       }
