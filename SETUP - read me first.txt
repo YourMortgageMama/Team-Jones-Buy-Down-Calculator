@@ -1,0 +1,38 @@
+TEAM JONES SELLER CREDIT CALCULATOR - SETUP
+
+WHAT'S IN THIS FOLDER
+  index.html                          The calculator (the whole website).
+  netlify/functions/mnd-rates.mjs     Pulls today's Mortgage News Daily rate index for the calculator.
+  netlify.toml                        Tells Netlify where the two pieces live.
+
+The calculator works on any website host. The LIVE RATES part needs Netlify (free plan is fine),
+because a web page can't read Mortgage News Daily directly. On any other host, the calculator
+still works, but it shows sample rates that agents have to edit by hand.
+
+RECOMMENDED: NETLIFY + GITHUB (about 15 minutes, no coding)
+  1. Create a free account at github.com.
+  2. Click "New repository". Name it something like team-jones-calculator. Keep it Public or Private, either works.
+  3. On the new repository page, click "uploading an existing file" and drag in EVERYTHING in this folder,
+     keeping the "netlify" folder structure intact. Click "Commit changes".
+  4. Create a free account at netlify.com and choose "Sign up with GitHub".
+  5. In Netlify: Add new site > Import an existing project > GitHub > pick your repository.
+     Leave the build settings as they are (netlify.toml fills them in). Click Deploy.
+  6. When it finishes, open the site. The rate box should say "Live" with today's date.
+  7. Optional: Site configuration > Change site name (for example teamjones-sellercredit.netlify.app),
+     or connect your own domain.
+
+NOTE: Netlify's drag-and-drop "Deploy manually" option publishes the calculator but does NOT run the
+live-rate piece. Use the GitHub route above if you want live rates.
+
+TO CHECK THE LIVE RATES
+  Visit  https://YOUR-SITE.netlify.app/.netlify/functions/mnd-rates
+  You should see something like: {"date":"Oct 23, 2026","rates":{"conv30":6.27,"conv15":5.81,...}}
+  If you see an "error" instead, Mortgage News Daily may have changed or blocked its page.
+  Send that message to Claude and it can update the rate reader.
+
+TO CHANGE THE CALCULATOR LATER
+  Edit index.html in GitHub (or upload a new version). Netlify republishes automatically in about a minute.
+
+BEFORE YOU SEND IT TO AGENTS
+  - Check Mortgage News Daily's terms of use for showing their rate index on your site.
+  - Have compliance review the disclaimer at the bottom of the page.
